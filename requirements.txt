@@ -1,0 +1,5 @@
+chromadb
+langchain_huggingface
+langchain_text_splitters
+langchain-docling
+sentence-transformers
