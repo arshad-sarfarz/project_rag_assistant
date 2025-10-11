@@ -1,4 +1,0 @@
-3 Global system design
-On the following figure 4 is shown the internal global system design of Netflix. This schema is quite complicated since there are several clouds, software, databases and devices that collaborate in order to improve the quality of Netflix services.
-Figure 4: Netflix system design[2]
-In this relation, I want focus the attention into 4 main part of this global system, that are:

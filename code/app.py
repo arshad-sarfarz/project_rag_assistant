@@ -1,56 +1,53 @@
-from data_loader import *
+from data_ingest import *
+from data_rag import *
+from utils import *
 
 
-def demo_data_load(file_paths: List[str], query: str = "ZUUL"):
+def query_collection(client: ClientAPI,
+                     query: str,
+                     collection_name: str = DEFAULT_COLLECTION_NAME,
+                     n_results: int = 3) -> Optional[Dict]:
     """
-    Demonstration of the data loader functionality.
+    Query the ChromaDB collection with semantic search.
 
     Args:
-        file_paths: List of files to process
-        query: Query string for testing
+        client: ChromaDB client instance
+        query: Query string
+        collection_name: Name of collection to query
+        n_results: Number of results to return
+
+    Returns:
+        Query results dictionary or None if query fails
     """
     try:
-        # Initialize database
-        client = initialize_db("db", clear_dir=True)
-        if not client:
-            return
+        hf = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+        query_embedding = hf.embed_query(query)
 
-        # Create collection
-        coll = create_collection(client, "documents")
-        if not coll:
-            return
+        collection = client.get_collection(name=collection_name)
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=n_results
+        )
 
-        # Load and process documents
-        texts, mds = load_text_with_docling(file_paths)
-        if not texts:
-            logger.error("No texts were loaded")
-            return
-
-        # Embed and store
-        success = embed_and_store_texts(coll, texts, metadatas=mds)
-        if not success:
-            logger.error("Failed to embed and store texts")
-            return
-
-        # Query the collection
-        results = query_collection(client, query)
+        logger.info(f"Query returned {len(results['documents'][0])} results")
         if results:
             print("Query Results:")
             for i, doc in enumerate(results['documents'][0]):
                 print(f"\nResult {i+1}:")
-                print(f"Content: {doc[:200]}...")
+                print(f"Content: {doc}")
                 if results['metadatas'][0][i]:
                     print(f"Metadata: {results['metadatas'][0][i]}")
 
     except Exception as e:
-        logger.error(f"Demo failed: {str(e)}")
+        logger.error(f"Query failed: {str(e)}")
+        return None
 
 
 if __name__ == "__main__":
 
     # Get files from folder - you can customize extensions and recursive behavior
     folder_files = get_files_from_folder(
-        folder_path=FOLDER_PATH,
+        folder_path=DATA_DIR,
         extensions=['.pdf', '.docx', '.pptx', '.xlsx',
                     '.html', '.md'],  # Docling supported formats
         recursive=True  # Set to False to only scan top-level folder
@@ -61,7 +58,12 @@ if __name__ == "__main__":
 
     if existing_files:
         logger.info(f"Processing {len(existing_files)} files")
-        demo_data_load(existing_files, "ZUUL")
+        success = load_design_documents(existing_files)
+        if success:
+            # query_collection(client, "Does the system use Azure Front Door?")
+            results = retrieve_design_documents(
+                query="What are variational encoders?", threshold=1.5)
+
     else:
         logger.warning("No files found.")
         logger.info("Please check:")
